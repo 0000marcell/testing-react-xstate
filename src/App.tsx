@@ -2,33 +2,32 @@ import React from 'react';
 import './App.css';
 import { Machine, interpret } from 'xstate';
 
-const lightMachine = Machine(
-  {
-    id: 'light',
-    initial: 'green',
-    states: {
-      green: {
-        // action referenced via string
-        entry: 'alertGreen'
-      }
-    }
-  },
-  {
-    actions: {
-      // action implementation
-      alertGreen: (context, event) => {
-        alert('Green!');
+const answeringMachine = Machine({
+  initial: 'unanswered',
+  states: {
+    unanswered: {
+      on: {
+        ANSWER: 'answered'
       }
     },
+    answered: {
+      type: 'final'
+    }
   }
-);
+});
 
-const promiseService = interpret(lightMachine).onTransition(state =>
-  console.log(state.value)
-);
+
+
+const answeringService = interpret(answeringMachine).onTransition(state => {
+  console.log(state.done)
+  console.log(state.toStrings())
+});
 
 function App() {
-  promiseService.start();
+  answeringService.start();
+  const { initialState } = answeringMachine;
+  const answeredState = answeringMachine.transition(initialState, 'ANSWER');
+  console.log(answeredState.done);
   return (
     <div className="App">
       <h1>Getting Started</h1>
