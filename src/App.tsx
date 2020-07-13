@@ -1,54 +1,65 @@
 import React from 'react';
 import './App.css';
-import { Machine } from 'xstate';
+import { Machine, assign, interpret } from 'xstate';
 
-const wizardMachine = Machine({
-  id: 'wizard',
-  initial: 'open',
-  states: {
-    open: {
-      initial: 'step1',
-      states: {
-        step1: {
-          on: { NEXT: 'step2' }
-        },
-        step2: {
-          /* ... */
-        },
-        step3: {
-          /* ... */
+const gameMachine = Machine(
+  {
+    id: 'game',
+    initial: 'playing',
+    context: {
+      points: 0
+    },
+    states: {
+      playing: {
+        // Eventless transition
+        // Will transition to either 'win' or 'lose' immediately upon
+        // (re)entering 'playing' state if the condition is met.
+        always: [
+          { target: 'win', cond: 'didPlayerWin' },
+          { target: 'lose', cond: 'didPlayerLose' }
+        ],
+        on: {
+          // Self-transition
+          AWARD_POINTS: {
+            actions: assign({
+              points: 100
+            })
+          }
         }
       },
-      on: {
-        NEXT: 'goodbye',
-        CLOSE: 'closed'
+      win: { type: 'final' },
+      lose: { type: 'final' }
+    }
+  },
+  {
+    guards: {
+      didPlayerWin: (context, event) => {
+        // check if player won
+        return context.points > 99;
+      },
+      didPlayerLose: (context, event) => {
+        // check if player lost
+        return context.points < 0;
       }
-    },
-    goodbye: {
-      on: { CLOSE: 'closed' }
-    },
-    closed: { type: 'final' }
+    }
   }
-});
+);
 
 
 function App() {
-  // { open: 'step1' }
-  const { initialState } = wizardMachine;
+  const gameService = interpret(gameMachine)
+    .onTransition((state) => console.log(state.value))
+    .start();
 
-  // the NEXT transition defined on 'open.step1'
-  // supersedes the NEXT transition defined
-  // on the parent 'open' state
-  const nextStepState = wizardMachine.transition(initialState, 'NEXT');
-  console.log(nextStepState.value);
-  // => { open: 'step2' }
+  // Still in 'playing' state because no conditions of
+  // transient transition were met
+  // => 'playing'
 
-  // there is no CLOSE transition on 'open.step1'
-  // so the event is passed up to the parent
-  // 'open' state, where it is defined
-  const closedState = wizardMachine.transition(initialState, 'CLOSE');
-  console.log(closedState.value);
-  // => 'closed'
+  // When 'AWARD_POINTS' is sent, a self-transition to 'PLAYING' occurs.
+  // The transient transition to 'win' is taken because the 'didPlayerWin'
+  // condition is satisfied.
+  gameService.send('AWARD_POINTS');
+  // => 'win'
 
   return (
     <div className="App">
