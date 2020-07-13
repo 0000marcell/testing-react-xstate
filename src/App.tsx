@@ -2,39 +2,57 @@ import React from 'react';
 import './App.css';
 import { Machine } from 'xstate';
 
-const isAdult = (age: any | undefined) => age >= 18;
-const isMinor = (age: any | undefined) => age < 18;
-
-const ageMachine = Machine({
-  id: 'age',
-  context: undefined, // age unknown
-  initial: 'unknown',
+const wizardMachine = Machine({
+  id: 'wizard',
+  initial: 'open',
   states: {
-    unknown: {
+    open: {
+      initial: 'step1',
+      states: {
+        step1: {
+          on: { NEXT: 'step2' }
+        },
+        step2: {
+          /* ... */
+        },
+        step3: {
+          /* ... */
+        }
+      },
       on: {
-        // immediately take transition that satisfies conditional guard.
-        // otherwise, no transition occurs
-        '': [
-          { target: 'adult', cond: isAdult },
-          { target: 'child', cond: isMinor }
-        ]
+        NEXT: 'goodbye',
+        CLOSE: 'closed'
       }
     },
-    adult: { type: 'final' },
-    child: { type: 'final' }
+    goodbye: {
+      on: { CLOSE: 'closed' }
+    },
+    closed: { type: 'final' }
   }
 });
 
 
-
 function App() {
-  console.log(ageMachine.initialState.value);
-  // => 'unknown'
-  const personMachine = ageMachine.withContext(28);
-  console.log(personMachine.initialState.value); 
+  // { open: 'step1' }
+  const { initialState } = wizardMachine;
+
+  // the NEXT transition defined on 'open.step1'
+  // supersedes the NEXT transition defined
+  // on the parent 'open' state
+  const nextStepState = wizardMachine.transition(initialState, 'NEXT');
+  console.log(nextStepState.value);
+  // => { open: 'step2' }
+
+  // there is no CLOSE transition on 'open.step1'
+  // so the event is passed up to the parent
+  // 'open' state, where it is defined
+  const closedState = wizardMachine.transition(initialState, 'CLOSE');
+  console.log(closedState.value);
+  // => 'closed'
+
   return (
     <div className="App">
-      <h1>Getting Started</h1>
+    <h1>Getting Started</h1>
     </div>
   );
 }
