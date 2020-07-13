@@ -1,33 +1,37 @@
 import React from 'react';
 import './App.css';
-import { Machine, interpret } from 'xstate';
+import { Machine } from 'xstate';
 
-const answeringMachine = Machine({
-  initial: 'unanswered',
+const isAdult = (age: any | undefined) => age >= 18;
+const isMinor = (age: any | undefined) => age < 18;
+
+const ageMachine = Machine({
+  id: 'age',
+  context: undefined, // age unknown
+  initial: 'unknown',
   states: {
-    unanswered: {
+    unknown: {
       on: {
-        ANSWER: 'answered'
+        // immediately take transition that satisfies conditional guard.
+        // otherwise, no transition occurs
+        '': [
+          { target: 'adult', cond: isAdult },
+          { target: 'child', cond: isMinor }
+        ]
       }
     },
-    answered: {
-      type: 'final'
-    }
+    adult: { type: 'final' },
+    child: { type: 'final' }
   }
 });
 
 
 
-const answeringService = interpret(answeringMachine).onTransition(state => {
-  console.log(state.done)
-  console.log(state.toStrings())
-});
-
 function App() {
-  answeringService.start();
-  const { initialState } = answeringMachine;
-  const answeredState = answeringMachine.transition(initialState, 'ANSWER');
-  console.log(answeredState.done);
+  console.log(ageMachine.initialState.value);
+  // => 'unknown'
+  const personMachine = ageMachine.withContext(28);
+  console.log(personMachine.initialState.value); 
   return (
     <div className="App">
       <h1>Getting Started</h1>
